@@ -20,6 +20,7 @@ imgsz: 640
 workers: 16
 cache: disk
 deterministic: false
+amp: bf16
 optimizer: MuSGD
 pretrained: false
 save: true
