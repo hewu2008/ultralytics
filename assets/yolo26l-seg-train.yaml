@@ -1,0 +1,76 @@
+# YOLO26l-seg training arguments for COCO2017 instance segmentation.
+# Consumed by scripts/run_train_yolo26l_seg.sh via `cfg=`. Any value here can be
+# overridden on the command line, e.g. `... epochs=10 batch=64`.
+#
+# Values not used by `mode=train` (conf, vid_stride, format, opset, ...) are kept
+# verbatim from the original command so the same file still drives val/export runs.
+
+task: segment
+project: ultralytics/yolo26
+name: yolo26l-seg
+exist_ok: false
+epochs: 60
+batch: 128
+optimizer: MuSGD
+save: true
+verbose: true
+multi_scale: 0.0
+mask_ratio: 1
+classes:
+conf:
+embed:
+line_width:
+opset:
+workspace:
+
+# Validation
+split: val
+save_json: true
+plots: true
+
+# Loss weights
+box: 9.83241
+cls: 0.64896
+dfl: 0.95824
+
+# Optimizer schedule
+lr0: 0.00038
+lrf: 0.88219
+momentum: 0.94751
+weight_decay: 0.00027
+warmup_epochs: 1
+warmup_momentum: 0.54064
+warmup_bias_lr: 0.05684
+
+# Augmentation
+hsv_h: 0.01315
+hsv_s: 0.35348
+hsv_v: 0.19383
+translate: 0.27484
+scale: 0.95
+fliplr: 0.30393
+mixup: 0.42713
+copy_paste: 0.40413
+
+# Prediction / export
+agnostic_nms: false
+augment: false
+dynamic: false
+format: torchscript
+keras: false
+nms: false
+optimize: false
+retina_masks: false
+simplify: true
+stream_buffer: false
+vid_stride: 1
+visualize: false
+show: false
+save_conf: false
+save_crop: false
+save_frames: false
+save_txt: false
+show_boxes: true
+show_conf: true
+show_labels: true
+tracker: botsort.yaml
