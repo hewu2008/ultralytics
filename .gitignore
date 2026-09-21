@@ -214,3 +214,6 @@ fuzz-models/
 
 # yolo weights
 assets/yolo26l-seg.pt
+
+# trae
+.trae/

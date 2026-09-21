@@ -1,0 +1,32 @@
+# Multi-view RGB-D segmentation fusion (2D masks -> 3D point cloud -> fused clusters -> 2D masks)
+# Run with run_multiview_fusion.sh after generating a scene with run_synth_multiview_scene.sh.
+
+scene: /data/4T-1/hewu/alg-product/ultralytics/runs/multiview/scene_boxes
+out: /data/4T-1/hewu/alg-product/ultralytics/runs/multiview/fused
+
+# Stage B: where the per-view 2D masks come from
+masks: synthetic # synthetic | yolo
+weights: /data/4T-1/hewu/alg-product/ultralytics/assets/yolo26l-seg.pt
+conf: 0.25
+class_id: 0 # class assigned to instances in synthetic mode
+
+# Stage C: within-view depth peeling
+depth_step_mm: 25.0
+min_instance_px: 200
+
+# Stage D/E/F: 3D fusion
+max_depth_mm: 3000.0
+voxel_mm: 4.0
+min_neighbors: 6
+reproj_tol_mm: 20.0
+min_consistency: 0.3
+min_cluster_points: 400
+
+# Stage G: reprojection
+hole_fill: true
+fill_hole_max_px: 2000
+min_final_px: 300
+
+# fx, fy, cx, cy for a 640x480 sensor. Placeholder values only; a real deployment must
+# override these with the actual calibration (or put K in each camera of scene.json).
+default_K: [465.0, 465.0, 320.0, 240.0]
