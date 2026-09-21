@@ -14,14 +14,18 @@ project: ultralytics/yolo26
 name: yolo26l-seg
 exist_ok: false
 epochs: 300
-batch: 128
+batch: 32
+nbs: 32
 imgsz: 640
+workers: 16
+cache: disk
+deterministic: false
 optimizer: MuSGD
 pretrained: false
 save: true
 verbose: true
 multi_scale: 0.0
-mask_ratio: 1
+mask_ratio: 4
 classes:
 conf:
 embed:
@@ -31,7 +35,9 @@ workspace:
 
 # Validation
 split: val
-save_json: true
+# 'val' in the dataset YAML is a directory, so is_coco is False and the COCO-JSON eval never runs.
+# save_json would only add per-epoch RLE dumps and the slower process_mask_native path.
+save_json: false
 plots: true
 
 # Loss weights
