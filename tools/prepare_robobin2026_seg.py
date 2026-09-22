@@ -30,7 +30,7 @@ def main(data_dir: Path) -> None:
     for split in SPLITS:
         json_file = data_dir / "annotations" / f"instances_{split}.json"
         if not json_file.is_file():
-            raise FileNotFoundError(json_file)
+            continue  # the rewritten dataset keeps only train/valid
         (stage / "anno" / json_file.name).symlink_to(json_file)
 
     convert_coco(labels_dir=str(stage / "anno"), save_dir=str(stage / "out"), use_segments=True, cls91to80=False)
