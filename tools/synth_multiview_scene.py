@@ -145,11 +145,7 @@ def render(camera: dict, boxes, add_ground: bool = True) -> tuple[np.ndarray, np
     if add_ground:
         t_ground = -origin[2] / dir_world[:, 2]
         hit_xy = origin[:2] + t_ground[:, None] * dir_world[:, :2]
-        on_ground = (
-            (t_ground > 0)
-            & (t_ground < best_depth)
-            & (np.abs(hit_xy) <= GROUND_HALF_EXTENT_MM).all(axis=1)
-        )
+        on_ground = (t_ground > 0) & (t_ground < best_depth) & (np.abs(hit_xy) <= GROUND_HALF_EXTENT_MM).all(axis=1)
         best_depth = np.where(on_ground, t_ground, best_depth)
         best_id = np.where(on_ground, np.uint16(0), best_id)
         best_normal = np.where(on_ground[:, None], np.array([0, 0, 1], np.float32), best_normal)

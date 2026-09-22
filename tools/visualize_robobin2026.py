@@ -12,7 +12,6 @@ regardless of split size.
 from __future__ import annotations
 
 import argparse
-import json
 import random
 from collections import Counter, defaultdict
 from math import ceil
@@ -20,6 +19,7 @@ from pathlib import Path
 
 import cv2
 import numpy as np
+from coco_stream import iter_array
 
 DEFAULT_DATA_ROOT = Path("/data/4T-2/dataset/robobin2026/robobin2026-v1")
 DEFAULT_OUT_DIR = Path(__file__).resolve().parents[1] / "runs" / "robobin2026"
@@ -40,68 +40,6 @@ PALETTE = [
 ]
 MASK_ALPHA = 0.35
 GAP = 8  # pixel gap between grid tiles
-
-
-def _find_top_level_key(buf: str, key: str) -> int:
-    """Return the index of top-level ``"key"`` in buf, or -1. A top-level key follows ``{`` or ``,``."""
-    needle = f'"{key}"'
-    i = buf.find(needle)
-    while i != -1:
-        j = i - 1
-        while j >= 0 and buf[j] in " \t\r\n":
-            j -= 1
-        if j >= 0 and buf[j] in "{,":
-            return i
-        i = buf.find(needle, i + 1)
-    return -1
-
-
-def _iter_array(path: Path, key: str, chunk_size: int = 1 << 23):
-    """Yield the items of the top-level JSON array ``key`` without loading the whole file."""
-    decoder = json.JSONDecoder()
-    with open(path, encoding="utf-8") as f:
-        # Phase 1: slide a window forward until the top-level key shows up, then enter its array.
-        buf = ""
-        while True:
-            chunk = f.read(chunk_size)
-            if not chunk:
-                raise KeyError(f"top-level key {key!r} not found in {path}")
-            buf = (buf[-64:] if len(buf) > 64 else buf) + chunk
-            i = _find_top_level_key(buf, key)
-            if i != -1:
-                break
-        buf = buf[buf.index("[", i) + 1 :]
-
-        # Phase 2: decode one element at a time, refilling only when an element is still incomplete.
-        # The window is compacted in bulk rather than per element, so decoding an item carries no
-        # O(chunk_size) string copy.
-        pos = 0
-        while True:
-            while pos < len(buf) and buf[pos] in " \t\r\n,":
-                pos += 1
-            if pos >= len(buf):
-                chunk = f.read(chunk_size)
-                if not chunk:
-                    return
-                buf = buf[pos:] + chunk
-                pos = 0
-                continue
-            if buf[pos] == "]":
-                return
-            while True:
-                try:
-                    item, end = decoder.raw_decode(buf, pos)
-                    break
-                except ValueError:
-                    chunk = f.read(chunk_size)
-                    if not chunk:
-                        raise
-                    buf += chunk
-            yield item
-            pos = end
-            if pos > chunk_size:
-                buf = buf[pos:]
-                pos = 0
 
 
 def imread(path: Path) -> np.ndarray:
@@ -178,13 +116,13 @@ def visualize_split(
     if not anno.is_file():
         raise FileNotFoundError(anno)
 
-    names = {c["id"]: c["name"] for c in _iter_array(anno, "categories")}
-    images = {im["id"]: im for im in _iter_array(anno, "images")}
+    names = {c["id"]: c["name"] for c in iter_array(anno, "categories")}
+    images = {im["id"]: im for im in iter_array(anno, "images")}
     picked = random.Random(seed).sample(sorted(images), min(num, len(images)))
     target = set(picked)
 
     anns, counts = defaultdict(list), Counter()
-    for a in _iter_array(anno, "annotations"):
+    for a in iter_array(anno, "annotations"):
         counts[a["category_id"]] += 1
         if a["image_id"] in target:
             anns[a["image_id"]].append(a)
