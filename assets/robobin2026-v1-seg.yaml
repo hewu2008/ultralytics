@@ -1,0 +1,18 @@
+# robobin2026-v1 instance segmentation dataset (converted COCO layout)
+# Root layout produced by run_convert_robobin2026_coco.sh:
+# /data/4T-2/dataset/robobin2026/robobin2026-v1
+# ├── annotations/instances_{train,valid,test}.json
+# ├── images/{train,valid,test}
+# └── labels/{train,valid,test}   <- built by run_prepare_robobin2026_v1_seg.sh
+path: /data/4T-2/dataset/robobin2026/robobin2026-v1
+train: images/train
+val: images/valid
+test: images/test
+
+# Order follows category_id in the COCO json, which prepare_robobin2026_seg.py maps to 0..4.
+names:
+  0: cardboard_box
+  1: material_bin
+  2: pallet
+  3: conveyor_belt
+  4: human
