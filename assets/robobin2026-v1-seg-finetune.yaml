@@ -14,8 +14,8 @@ project: ultralytics/yolo26
 name: robobin2026-v1-seg-finetune
 exist_ok: false
 epochs: 100
-batch: 32
-nbs: 32
+batch: 64
+nbs: 64
 imgsz: 640
 workers: 16
 cache: disk
