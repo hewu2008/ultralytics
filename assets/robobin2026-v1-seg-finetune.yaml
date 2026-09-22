@@ -45,9 +45,9 @@ plots: true
 box: 7.5
 cls: 0.5
 dfl: 1.5
-# train annotations are imbalanced (cardboard_box 68.4% vs conveyor_belt 1.6%), but valid and test
-# share the same distribution, so cls_pw is left at its 0.0 default: up-weighting the rare classes
-# would trade the reported mask mAP for per-class balance. Try `cls_pw=0.5` to compare.
+# train annotations are imbalanced (cardboard_box 68.4% vs conveyor_belt 1.6%), which lets the
+# majority class dominate the classification BCE. cls_pw is left at its 0.0 default rather than
+# guessed; try `cls_pw=0.5` to dampen the 42x inverse-frequency ratio to about 6.5x and compare.
 cls_pw: 0.0
 
 # Optimizer schedule
@@ -63,6 +63,8 @@ warmup_momentum: 0.8
 warmup_bias_lr: 0.1
 
 # Augmentation
+mosaic: 1.0
+close_mosaic: 10
 hsv_h: 0.015
 hsv_s: 0.7
 hsv_v: 0.4
