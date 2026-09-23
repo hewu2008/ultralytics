@@ -1,0 +1,30 @@
+# robobin2026-v3 instance segmentation dataset = robobin2026-v1 + robobin2026-v2 merged.
+# Built by scripts/run_merge_robobin2026_v3.sh (tools/merge_robobin2026_v3.py) with these split rules:
+#   train = v1/train + v2/train = 97804 + 900
+#   val   = v1/valid + v2/valid = 10000 + 102
+#   test  = v2/test = 109            (v1 has no test split)
+# /data/4T-2/dataset/robobin2026/robobin2026-v3
+# ├── images/{train,valid,test}   98704 / 10102 / 109
+# └── labels/{train,valid,test}   same counts
+#
+# images/ and labels/ are symlinks into v1 and v2 rather than copies: v3 costs no disk and stays in
+# sync, but both source datasets must stay in place. No annotations/ is created - YOLO train/val only
+# reads images/ + labels/, and duplicating v1's 2.3 GB instances_train.json buys nothing here.
+# Derived caches (.npy, labels/*.cache) are written into v3 and never into the sources.
+#
+# names is v1's 5-class map. v2 is single-class and its index 0 is the same cardboard_box, so its
+# labels concatenate without remapping. v2 only carries 1799 train / 204 val instances, i.e. 0.9% of
+# train images and 0.16% of val instances, so it cannot move the aggregate mAP by itself - judge the
+# stacked-box behaviour on assets/robobin2026-v2-seg.yaml instead of on v3's pooled metrics.
+path: /data/4T-2/dataset/robobin2026/robobin2026-v3
+train: images/train
+val: images/valid
+test: images/test
+
+# Order follows category_id in the COCO json, which prepare_robobin2026_seg.py maps to 0..4.
+names:
+  0: cardboard_box
+  1: material_bin
+  2: pallet
+  3: conveyor_belt
+  4: human
