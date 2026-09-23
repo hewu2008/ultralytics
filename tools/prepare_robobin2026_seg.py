@@ -1,10 +1,10 @@
 # Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
-"""Prepare the robobin2026-v1 COCO export for YOLO segmentation training.
+"""Prepare a robobin2026 COCO export (v1, v2) for YOLO segmentation training.
 
 Turns ``annotations/instances_<split>.json`` into the ``labels/<split>`` tree Ultralytics expects
-beside ``images/<split>``. ``cls91to80`` is kept off because robobin2026 defines its own five
-classes, so the 91-to-80 COCO remap that prepare_coco2017_seg.py relies on would mislabel every
-instance.
+beside ``images/<split>``. ``cls91to80`` is kept off because robobin2026 defines its own classes
+(five in v1, one in v2), so the 91-to-80 COCO remap that prepare_coco2017_seg.py relies on would
+mislabel every instance.
 """
 
 import argparse
@@ -39,6 +39,6 @@ def main(data_dir: Path) -> None:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Prepare robobin2026-v1 YOLO segmentation labels")
+    parser = argparse.ArgumentParser(description="Prepare robobin2026 YOLO segmentation labels")
     parser.add_argument("data_dir", type=Path, help="dataset root, i.e. /data/4T-2/dataset/robobin2026/robobin2026-v1")
     main(parser.parse_args().data_dir)

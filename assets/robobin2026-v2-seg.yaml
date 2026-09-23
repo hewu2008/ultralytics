@@ -1,0 +1,25 @@
+# robobin2026-v2 instance segmentation dataset (converted COCO layout)
+# Produced by run_prepare_robobin2026_v2_seg.sh, which turns annotations/instances_<split>.json into
+# labels/<split>. v2 is single-class (cardboard_box only), 1920x1080 source frames, and keeps its
+# test split.
+# /data/4T-2/dataset/robobin2026/robobin2026-v2
+# ├── annotations/instances_{train,valid,test}.json
+# ├── images/{train,valid,test}   1422 / 178 / 178
+# └── labels/{train,valid,test}    900 / 102 / 109   (no txt for the unlabelled images below)
+#
+# Label-quality caveats measured with the v1-trained yolo26l-seg (see conversation audit):
+#   - 522/1422 train, 76/178 valid, 69/178 test images carry no annotation at all, yet the model
+#     detects cardboard_box in 100% of them at conf>=0.5 (mean max conf 0.977). Ultralytics treats
+#     a missing txt as a background image, so these are currently trained as negatives.
+#   - every annotated image holds exactly two boxes: a large one (model IoU 0.95, 100% matched) and
+#     a small one nested against its bottom edge (matched only 55%, 38% at IoU<0.1).
+# Fix the annotations before using this dataset for a baseline.
+
+path: /data/4T-2/dataset/robobin2026/robobin2026-v2
+train: images/train
+val: images/valid
+test: images/test
+
+# Order follows category_id in the COCO json, which prepare_robobin2026_seg.py maps to 0.
+names:
+  0: cardboard_box
