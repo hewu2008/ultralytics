@@ -21,7 +21,7 @@ from ultralytics.data.utils import VID_FORMATS
 REPO = Path(__file__).resolve().parents[1]
 DEFAULT_MODEL = REPO / "runs/segment/ultralytics/yolo26/robobin2026-v1-seg-finetune-2/weights/best.pt"
 DEFAULT_SOURCE = REPO / "assets/video"
-DEFAULT_OUT = REPO / "runs/segment/robobin2026-video-pred"
+DEFAULT_OUT = REPO / "runs/segment/robobin2026-v1-seg-video-pred"
 
 
 def source_videos(source: Path) -> list[Path]:
