@@ -1,0 +1,118 @@
+# YOLO26l-seg fine-tuning arguments for robobin2026-v4 instance segmentation.
+# Consumed by scripts/run_train_robobin2026_v4_seg.sh via `cfg=`. Any value here can be
+# overridden on the command line, e.g. `... epochs=10 batch=32`.
+#
+# Only the dataset changed from robobin2026-v3-seg-finetune.yaml: 267 of the 297 20260924 frames join
+# train and 30 join test, i.e. +0.3% of train images and +0.13% of train instances (cardboard_box
+# 68.79% -> 68.88% of instances), which cannot move the aggregate mAP on its own. Every
+# hyperparameter below is inherited unchanged, so a v3 and a v4 run differ only in their data.
+#
+# The recipe is the from-scratch one in yolo26l-seg-train.yaml with only what fine-tuning from
+# assets/yolo26l-seg.pt changes adjusted: epochs 300 -> 30, lr0 0.01 -> 0.001, pretrained back on.
+# The schedule is calibrated on the v1 runs: robobin2026-v1-seg-finetune went flat at epoch 15 of a
+# 100-epoch cosine while lr was still 82% of lr0, and robobin2026-v1-seg-finetune-2 peaked at box
+# mAP50-95 0.8457 (epoch 35 of 40) and mask 0.7188 (epoch 32), so its last 8 epochs bought nothing.
+#
+# Batch protocol: 2 GPUs at batch 64 with nbs 64, which is the same global batch, the same per-GPU
+# batch of 32 and the same one-step accumulation as robobin2026-v3-seg-finetune, so weight decay
+# scaling and loss normalisation stay comparable to it. `batch` is the global batch; `device=0,1` is
+# what actually spawns the two ranks.
+#
+# cls_pw is left at 0.0, i.e. the unweighted baseline the calibrated metrics above come from. Pass
+# `cls_pw=0.5` on the command line for the sqrt inverse-frequency arm that targets conveyor_belt.
+#
+# Values not used by `mode=train` (conf, vid_stride, format, opset, ...) are kept verbatim from
+# the from-scratch file so the same file still drives val/export runs.
+
+task: segment
+project: ultralytics/yolo26
+name: robobin2026-v4-seg-finetune
+exist_ok: false
+epochs: 40
+batch: 64
+nbs: 64
+imgsz: 640
+workers: 16
+cache: disk
+deterministic: false
+amp: bf16
+optimizer: MuSGD
+pretrained: true
+save: true
+verbose: true
+multi_scale: 0.0
+mask_ratio: 4
+classes:
+conf:
+embed:
+line_width:
+opset:
+workspace:
+
+# Validation
+split: val
+# 'val' in the dataset YAML is a directory, so is_coco is False and the COCO-JSON eval never runs.
+# save_json would only add per-epoch RLE dumps and the slower process_mask_native path.
+save_json: false
+plots: true
+
+# Loss weights
+box: 7.5
+cls: 0.5
+dfl: 1.5
+# train annotations are imbalanced (cardboard_box 68.88% vs conveyor_belt 1.66% of instances), which
+# lets the majority class dominate the classification BCE. cls_pw=0.5 takes the square root of the
+# inverse-frequency weights, damping the 41x raw ratio to about 6.4x. Set cls_pw=0.0 to reproduce
+# the unweighted baseline.
+cls_pw: 0.0
+
+# Optimizer schedule
+# The pretrained backbone already carries strong features, so lr0 sits an order of magnitude below
+# the from-scratch 0.01. The first run went flat while lr was still high, so the cosine is compressed
+# to 30 epochs: it visits the same lr values 2.4x faster and reaches the productive sub-0.3x-lr0
+# range around epoch 19 instead of epoch 63. lr0 is deliberately left at 0.001 - lowering it too
+# would compress the schedule twice over.
+lr0: 0.001
+lrf: 0.01
+cos_lr: true
+momentum: 0.937
+weight_decay: 0.0005
+warmup_epochs: 2.0  # 3.0 at 100 epochs is 3% of the run; 2.0 is 6.7% of the 30-epoch schedule
+warmup_momentum: 0.8
+warmup_bias_lr: 0.1
+
+# Augmentation
+mosaic: 1.0
+# Also disables copy_paste, mixup and cutmix for the final N epochs, so keep the share bounded.
+close_mosaic: 5
+hsv_h: 0.015
+hsv_s: 0.7
+hsv_v: 0.4
+translate: 0.1
+scale: 0.5
+fliplr: 0.5
+mixup: 0.0
+copy_paste: 0.3
+
+# Prediction / export
+agnostic_nms: false
+augment: false
+dynamic: false
+format: torchscript
+keras: false
+nms: false
+optimize: false
+retina_masks: false
+simplify: true
+stream_buffer: false
+vid_stride: 1
+visualize: false
+show: false
+save_conf: false
+save_crop: false
+save_frames: false
+save_txt: false
+show_boxes: true
+show_conf: true
+show_labels: true
+tracker: botsort.yaml

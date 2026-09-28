@@ -1,0 +1,41 @@
+# robobin2026-v4 instance segmentation dataset = robobin2026-v3 + the 20260924 capture.
+# v3 is a symlink farm: every file under images/ and labels/ points back into v1 and v2, so it only
+# reads while all three stay in place. v4 dereferences it into real copies and adds the standard COCO
+# annotations v3 never carried. Split rules:
+#   train = v3/train + 20260924 frames (267 of 297) = 98704 + 267
+#   val   = v3/valid                                =         10102
+#   test  = v3/test  + 20260924 frames ( 30 of 297) =   109 +    30
+# Built by scripts/run_build_robobin2026_v4.sh (tools/build_robobin2026_v4.py), then
+# scripts/run_merge_robobin2026_20260924.sh (tools/merge_robobin2026_20260924.py).
+# /data/4T-2/dataset/robobin2026/robobin2026-v4
+# ├── annotations/instances_{train,valid,test}.json   1235432 / 127669 / 402 annotations
+# ├── images/{train,valid,test}  98971 / 10102 / 139  real files, no symlinks
+# └── labels/{train,valid,test}  same counts
+#
+# YOLO train/val reads only images/ and labels/. annotations/ is kept because it is the source of
+# truth the labels were generated from: rebuilding it from v1/v2 instead of re-deriving it from the
+# labels is what makes the split reproducible.
+#
+# `cache: disk` in the finetune cfg writes decoded-image .npy caches into images/, adding roughly
+# 200 GB on top of the 61 GB already here (v1's images/ grew from ~55 GB of jpg to 248 GB that way).
+# The first v4 run therefore needs a long warm-up pass before the first epoch.
+#
+# names is v1's 5-class map. v2 and the 20260924 capture are both single-class and their index 0 is
+# the same cardboard_box, so their labels concatenate without remapping.
+# Two caveats any v4 metric carries:
+#   - test is 100% cardboard_box: v2's test held no other class and the capture only annotated boxes,
+#     so test says nothing about the other four classes.
+#   - the 30 test frames were cut at random out of the same 15 videos as the 267 train frames, so
+#     several are 1-second-apart near-duplicates of train frames and test scores read optimistically.
+path: /data/4T-2/dataset/robobin2026/robobin2026-v4
+train: images/train
+val: images/valid
+test: images/test
+
+# Order follows category_id in the COCO json, which the converter maps to 0..4.
+names:
+  0: cardboard_box
+  1: material_bin
+  2: pallet
+  3: conveyor_belt
+  4: human
