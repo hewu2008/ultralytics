@@ -1,0 +1,101 @@
+# YOLO26l-seg fine-tuning arguments for the /data/4T-1/hewu/dataset/yolo segmentation set.
+# Consumed by tools/finetune_yolo_seg.py through `cfg=`, which forwards it to YOLO.train; any value
+# can be overridden on the command line, e.g. `epochs=10 batch=16`.
+#
+# The pretrained checkpoint runs/pretrained/weights/best.pt already separates the same 5 classes at
+# conf 0.8, so this refines it on 240 images rather than training from scratch. The recipe is
+# robobin2026-v4-seg-finetune.yaml with the batch protocol scaled from two GPUs to one:
+#   - batch 32 / nbs 32: same global batch as v4's per-GPU batch, keeping weight-decay scaling and
+#     loss normalisation comparable while running on a single device, matching the v1-clspw05 run.
+#   - cache: ram: 240 images fit in RAM, so the on-disk .npy warm-up pass v4 needs is skipped.
+#   - lr0 0.001 stays an order of magnitude below the from-scratch 0.01: the backbone already carries
+#     the class features and a larger lr only risks washing them out.
+#
+# cls_pw is left at 0.0 (unweighted), matching the v4 baseline. The train labels here hold only
+# elbow_pipe (699) and interior_door_handle (535) instances, a 1.3x ratio that needs no weighting.
+#
+# Values not used by `mode=train` (conf, vid_stride, format, opset, ...) are kept verbatim from the
+# from-scratch file so the same file still drives val/export runs.
+
+task: segment
+project: ultralytics/yolo26
+name: yolo-seg-finetune
+exist_ok: false
+epochs: 40
+batch: 32
+nbs: 32
+imgsz: 640
+workers: 8
+cache: ram
+deterministic: false
+amp: bf16
+optimizer: MuSGD
+pretrained: true
+save: true
+verbose: true
+multi_scale: 0.0
+mask_ratio: 4
+classes:
+conf:
+embed:
+line_width:
+opset:
+workspace:
+
+# Validation
+split: val
+# 'val' in data.yaml is a directory, so is_coco is False and the COCO-JSON eval never runs.
+save_json: false
+plots: true
+
+# Loss weights
+box: 7.5
+cls: 0.5
+dfl: 1.5
+cls_pw: 0.0
+
+# Optimizer schedule
+lr0: 0.001
+lrf: 0.01
+cos_lr: true
+momentum: 0.937
+weight_decay: 0.0005
+warmup_epochs: 1.0
+warmup_momentum: 0.8
+warmup_bias_lr: 0.1
+
+# Augmentation
+mosaic: 1.0
+# Also disables copy_paste, mixup and cutmix for the final N epochs, so keep the share bounded.
+close_mosaic: 5
+hsv_h: 0.015
+hsv_s: 0.7
+hsv_v: 0.4
+translate: 0.1
+scale: 0.5
+fliplr: 0.5
+mixup: 0.0
+copy_paste: 0.3
+
+# Prediction / export
+agnostic_nms: false
+augment: false
+dynamic: false
+format: torchscript
+keras: false
+nms: false
+optimize: false
+retina_masks: false
+simplify: true
+stream_buffer: false
+vid_stride: 1
+visualize: false
+show: false
+save_conf: false
+save_crop: false
+save_frames: false
+save_txt: false
+show_boxes: true
+show_conf: true
+show_labels: true
+tracker: botsort.yaml
