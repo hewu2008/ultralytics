@@ -78,7 +78,7 @@ warmup_momentum: 0.8
 warmup_bias_lr: 0.1
 
 # Augmentation
-mosaic: 0.5
+mosaic: 1.0
 # Also disables copy_paste, mixup and cutmix for the final N epochs, so keep the share bounded.
 close_mosaic: 5
 hsv_h: 0.015
