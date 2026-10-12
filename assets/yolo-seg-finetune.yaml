@@ -2,17 +2,30 @@
 # Consumed by tools/finetune_yolo_seg.py through `cfg=`, which forwards it to YOLO.train; any value
 # can be overridden on the command line, e.g. `epochs=10 batch=16`.
 #
-# The pretrained checkpoint runs/pretrained/weights/best.pt already separates the same 5 classes at
-# conf 0.8, so this refines it on 240 images rather than training from scratch. The recipe is
-# robobin2026-v4-seg-finetune.yaml with the batch protocol scaled from two GPUs to one:
-#   - batch 32 / nbs 32: same global batch as v4's per-GPU batch, keeping weight-decay scaling and
-#     loss normalisation comparable while running on a single device, matching the v1-clspw05 run.
+# This is deliberately a two-class fine-tune: the labels carry only elbow_pipe (class 3, 699
+# instances) and interior_door_handle (class 4, 535), and only those two matter downstream. Classes
+# 0/1/2 keep their slots in the 5-class head but get no positive supervision here, so their logits
+# drift toward background over the run (catastrophic forgetting). That is accepted - filter to 3/4 at
+# inference. Do not read the val metrics as a 5-class score: Ultralytics only tabulates classes that
+# have instances, so the `all` row means "elbow_pipe + interior_door_handle" (16 images / 114
+# instances, val box mAP50 0.99 on the pretrained checkpoint); read the two per-class rows instead.
+# If those three classes are ever needed again, mix in replay data that carries them and freeze the
+# backbone rather than reusing this file as-is.
+#
+# The checkpoint already separates both target classes at conf 0.8, so this is a light same-domain
+# refinement, not a re-learn. That drives the small-set choices below, adapted from
+# robobin2026-v4-seg-finetune.yaml:
+#   - epochs 30 / mosaic 0.5: 216 train images the base model already fits, so a long schedule and
+#     full mosaic 1.0 only drift it away from a working operating point; both are trimmed because the
+#     domain is fixed and only two classes need to hold up.
+#   - batch 32 / nbs 32: same global batch as v4's per-GPU batch, so weight-decay scaling and loss
+#     normalisation are not rescaled while running on a single device, matching the v1-clspw05 run.
 #   - cache: ram: 240 images fit in RAM, so the on-disk .npy warm-up pass v4 needs is skipped.
 #   - lr0 0.001 stays an order of magnitude below the from-scratch 0.01: the backbone already carries
 #     the class features and a larger lr only risks washing them out.
 #
-# cls_pw is left at 0.0 (unweighted), matching the v4 baseline. The train labels here hold only
-# elbow_pipe (699) and interior_door_handle (535) instances, a 1.3x ratio that needs no weighting.
+# cls_pw is left at 0.0 (unweighted). The two labelled classes sit at 699:535 = 1.3x, which needs no
+# reweighting; cls_pw addresses frequent-vs-rare, not labelled-vs-absent.
 #
 # Values not used by `mode=train` (conf, vid_stride, format, opset, ...) are kept verbatim from the
 # from-scratch file so the same file still drives val/export runs.
@@ -21,7 +34,7 @@ task: segment
 project: ultralytics/yolo26
 name: yolo-seg-finetune
 exist_ok: false
-epochs: 40
+epochs: 30
 batch: 32
 nbs: 32
 imgsz: 640
@@ -65,7 +78,7 @@ warmup_momentum: 0.8
 warmup_bias_lr: 0.1
 
 # Augmentation
-mosaic: 1.0
+mosaic: 0.5
 # Also disables copy_paste, mixup and cutmix for the final N epochs, so keep the share bounded.
 close_mosaic: 5
 hsv_h: 0.015
