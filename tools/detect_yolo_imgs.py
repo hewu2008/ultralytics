@@ -82,6 +82,9 @@ def main() -> None:
     if not args.source.exists():
         raise FileNotFoundError(f"no such source {args.source}")
 
+    # Resolve to an absolute path: Ultralytics' saver joins a relative `project` onto its default
+    # runs/<task> dir, which would nest the rendered images away from summary.json/xanylabeling/.
+    args.out = args.out.resolve()
     model = YOLO(str(args.model))
     args.out.mkdir(parents=True, exist_ok=True)
     xany_dir = args.out / "xanylabeling"
