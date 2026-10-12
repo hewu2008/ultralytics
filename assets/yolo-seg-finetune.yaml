@@ -2,30 +2,37 @@
 # Consumed by tools/finetune_yolo_seg.py through `cfg=`, which forwards it to YOLO.train; any value
 # can be overridden on the command line, e.g. `epochs=10 batch=16`.
 #
-# This is deliberately a two-class fine-tune: the labels carry only elbow_pipe (class 3, 699
-# instances) and interior_door_handle (class 4, 535), and only those two matter downstream. Classes
+# The starting checkpoint is runs/pretrained/weights/best.pt, whose train_args name is
+# output_parts_20260723_mixed_14 (2026-08-09, Ultralytics 8.4.104, itself a 20-epoch continuation
+# of output_parts_20260723_mixed_13/weights/last.pt). It carries the same 5 classes as this data and
+# was NOT trained on this capture, so this is a fine-tune of a checkpoint that already separates both
+# target classes at conf 0.8 - not a re-learn.
+#
+# The structural knobs (optimizer AdamW, batch 18, nbs 64, imgsz, momentum, weight_decay,
+# deterministic, amp, loss weights, mask_ratio) are taken from that checkpoint's train_args so this
+# run stays comparable with the model it starts from. The schedule and augmentation deliberately
+# deviate: replaying the checkpoint's lr0 5e-05 / linear decay / mosaic 0.1 / degrees 40 / mixup 0.05
+# on 218 new images moves the model too little to be a fine-tune. Only the data-loading knobs (cache,
+# workers) and the unused predict/export block are untouched: cache ram fits 242 images in RAM,
+# skipping the on-disk .npy warm-up pass that v4's 100k-image set needs.
+#
+# This is deliberately a two-class fine-tune: the labels carry only elbow_pipe (class 3, 638
+# instances) and interior_door_handle (class 4, 483), and only those two matter downstream. Classes
 # 0/1/2 keep their slots in the 5-class head but get no positive supervision here, so their logits
 # drift toward background over the run (catastrophic forgetting). That is accepted - filter to 3/4 at
 # inference. Do not read the val metrics as a 5-class score: Ultralytics only tabulates classes that
-# have instances, so the `all` row means "elbow_pipe + interior_door_handle" (16 images / 114
-# instances, val box mAP50 0.99 on the pretrained checkpoint); read the two per-class rows instead.
-# If those three classes are ever needed again, mix in replay data that carries them and freeze the
-# backbone rather than reusing this file as-is.
+# have instances, so the `all` row means "elbow_pipe + interior_door_handle" (24 images / 121
+# instances, 65 + 56). If those three classes are ever needed again, mix in replay data that carries
+# them and freeze the backbone rather than reusing this file as-is.
 #
-# The checkpoint already separates both target classes at conf 0.8, so this is a light same-domain
-# refinement, not a re-learn. That drives the small-set choices below, adapted from
-# robobin2026-v4-seg-finetune.yaml:
-#   - epochs 30 / mosaic 0.5: 216 train images the base model already fits, so a long schedule and
-#     full mosaic 1.0 only drift it away from a working operating point; both are trimmed because the
-#     domain is fixed and only two classes need to hold up.
-#   - batch 32 / nbs 32: same global batch as v4's per-GPU batch, so weight-decay scaling and loss
-#     normalisation are not rescaled while running on a single device, matching the v1-clspw05 run.
-#   - cache: ram: 240 images fit in RAM, so the on-disk .npy warm-up pass v4 needs is skipped.
-#   - lr0 0.001 stays an order of magnitude below the from-scratch 0.01: the backbone already carries
-#     the class features and a larger lr only risks washing them out.
+# The 24-image val set is a frame-level random 10% cut of one continuous screenshot series, so it
+# holds frames adjacent to train frames (e.g. 0224/0225) and reads optimistically. Use it as a smoke
+# test, not as a generalization estimate; its run-to-run swing is around +-0.03 mAP50-95, wider than
+# most hyperparameter effects, so compare seeds rather than single runs.
 #
-# cls_pw is left at 0.0 (unweighted). The two labelled classes sit at 699:535 = 1.3x, which needs no
-# reweighting; cls_pw addresses frequent-vs-rare, not labelled-vs-absent.
+# cls_pw is left at 0.0 (unweighted), matching the checkpoint. The two labelled classes sit at
+# 638:483 = 1.3x, which needs no reweighting; cls_pw addresses frequent-vs-rare, not
+# labelled-vs-absent.
 #
 # Values not used by `mode=train` (conf, vid_stride, format, opset, ...) are kept verbatim from the
 # from-scratch file so the same file still drives val/export runs.
@@ -34,15 +41,17 @@ task: segment
 project: ultralytics/yolo26
 name: yolo-seg-finetune
 exist_ok: false
-epochs: 30
-batch: 32
-nbs: 32
+epochs: 40
+# Checkpoint value, kept for now: with a noisy 24-image val, 5 flat epochs can stop the run before a
+# 40-epoch cosine reaches its low-lr tail. Raise it from the command line if the run ends early.
+batch: 18
+nbs: 18
 imgsz: 640
 workers: 8
 cache: ram
-deterministic: false
+deterministic: true
 amp: bf16
-optimizer: MuSGD
+optimizer: AdamW
 pretrained: true
 save: true
 verbose: true
@@ -68,24 +77,35 @@ dfl: 1.5
 cls_pw: 0.0
 
 # Optimizer schedule
-lr0: 0.001
+# Deviates from the checkpoint on purpose. lr0 0.001 is 20x what the checkpoint was last optimised at
+# and matches the Ultralytics AdamW setting for a set this small (218 train images). cos_lr with
+# lrf 0.01 decays it to 1e-05 across the 40 epochs, so the tail settles instead of being cut while lr
+# is still high. warmup_epochs 0 matches the checkpoint, but with lr0 now 20x higher epoch 1 may open
+# noisier - warmup_epochs=1.0 is the first knob to try if it does.
+lr0: 0.0001
 lrf: 0.01
 cos_lr: true
 momentum: 0.937
 weight_decay: 0.0005
-warmup_epochs: 1.0
+warmup_epochs: 0.0
 warmup_momentum: 0.8
 warmup_bias_lr: 0.1
 
 # Augmentation
+# Full mosaic is back for the 218-image train set: 0.1 was the checkpoint's value on a much larger
+# corpus, and four-way composition is the main source of new context here. degrees 40 is dropped
+# because this capture is fixed-camera and carries no rotation; mixup 0.05 is dropped because it
+# fabricates masks for blended instances that exist in neither source annotation.
 mosaic: 1.0
 # Also disables copy_paste, mixup and cutmix for the final N epochs, so keep the share bounded.
+# 2 is the checkpoint's value; now that mosaic is 1.0 a longer no-augmentation tail is worth trying.
 close_mosaic: 5
 hsv_h: 0.015
 hsv_s: 0.7
 hsv_v: 0.4
-translate: 0.1
-scale: 0.5
+degrees: 0.0
+translate: 0.15
+scale: 0.3
 fliplr: 0.5
 mixup: 0.0
 copy_paste: 0.3
