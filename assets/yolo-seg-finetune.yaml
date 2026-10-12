@@ -42,7 +42,7 @@ task: segment
 project: ultralytics/yolo26
 name: yolo-seg-finetune
 exist_ok: false
-epochs: 40
+epochs: 30
 batch: 18
 nbs: 18
 imgsz: 640
@@ -77,7 +77,7 @@ cls_pw: 0.0
 
 # Optimizer schedule
 # Deviates from the checkpoint on purpose: lr0 0.0001 is 2x the 5e-05 it was last optimised at, and
-# cos_lr true replaces the checkpoint's linear decay. lrf 0.01 decays it to ~1e-06 by epoch 40, so the
+# cos_lr true replaces the checkpoint's linear decay. lrf 0.01 decays it to ~1e-06 by epoch 30, so the
 # tail settles instead of being cut while lr is still high. warmup_epochs 0 matches the checkpoint.
 lr0: 0.0001
 lrf: 0.01
