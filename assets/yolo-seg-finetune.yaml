@@ -42,7 +42,7 @@ task: segment
 project: ultralytics/yolo26
 name: yolo-seg-finetune
 exist_ok: false
-epochs: 30
+epochs: 60
 batch: 18
 nbs: 18
 imgsz: 640
