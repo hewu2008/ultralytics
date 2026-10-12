@@ -3,9 +3,11 @@
 
 Streams each image through ``model.predict(..., stream=True)`` and lets Ultralytics' own saver
 write the rendered ``Results.plot()`` copy (``save=True``) plus the machine-readable YOLO label
-files (``save_txt``/``save_conf``). A per-image class-count summary is dumped to ``summary.json``
-so a folder can be reviewed without re-running inference. Any Ultralytics backend works, so
-``--model`` accepts either the ``.pt`` checkpoint or the exported end2end ``.onnx``.
+files (``save_txt``). Every result is also written in X-AnyLabeling's native JSON format (polygon
+masks, or boxes for a detection model) under ``xanylabeling/`` so the predictions can be opened and
+corrected in that tool. A per-image class-count summary is dumped to ``summary.json`` so a folder
+can be reviewed without re-running inference. Any Ultralytics backend works, so ``--model`` accepts
+either the ``.pt`` checkpoint or the exported end2end ``.onnx``.
 """
 
 from __future__ import annotations
@@ -16,11 +18,53 @@ from collections import Counter
 from pathlib import Path
 
 from ultralytics import YOLO
+from ultralytics.engine.results import Results
 
 REPO = Path(__file__).resolve().parents[1]
 DEFAULT_MODEL = REPO / "runs/pretrained/weights/best.pt"
 DEFAULT_SOURCE = Path("/data/4T-1/hewu/dataset/yolo/imgs")
 DEFAULT_OUT = REPO / "runs/pretrained/detect-imgs"
+XANY_VERSION = "2.4.0"
+
+
+def xanylabeling(result: Results) -> dict:
+    """Convert one prediction result into an X-AnyLabeling annotation dict.
+
+    Masks become absolute-pixel ``polygon`` shapes; a detection model without masks falls back to
+    ``rectangle`` shapes. ``imagePath``/``imageHeight``/``imageWidth`` reference the original source
+    image so the file lines up when it is opened next to it in X-AnyLabeling.
+    """
+    polygons = result.masks.xy if result.masks is not None else None
+    shapes = []
+    for i, box in enumerate(result.boxes):
+        if polygons is not None:
+            points, shape_type = [[float(x), float(y)] for x, y in polygons[i]], "polygon"
+        else:
+            top, left, bottom, right = (float(v) for v in box.xyxy[0])
+            points, shape_type = [[top, left], [bottom, right]], "rectangle"
+        shapes.append(
+            {
+                "label": result.names[int(box.cls)],
+                "score": float(box.conf),
+                "points": points,
+                "group_id": None,
+                "description": "",
+                "difficult": False,
+                "shape_type": shape_type,
+                "flags": {},
+                "attributes": {},
+            }
+        )
+    height, width = result.orig_shape
+    return {
+        "version": XANY_VERSION,
+        "flags": {},
+        "shapes": shapes,
+        "imagePath": Path(result.path).name,
+        "imageData": None,
+        "imageHeight": height,
+        "imageWidth": width,
+    }
 
 
 def main() -> None:
@@ -40,6 +84,8 @@ def main() -> None:
 
     model = YOLO(str(args.model))
     args.out.mkdir(parents=True, exist_ok=True)
+    xany_dir = args.out / "xanylabeling"
+    xany_dir.mkdir(parents=True, exist_ok=True)
 
     summary, total, images = {}, Counter(), 0
     for result in model.predict(
@@ -57,12 +103,16 @@ def main() -> None:
         stream=True,
         verbose=False,
     ):
+        name = Path(result.path).name
         counts = Counter(model.names[int(c)] for c in result.boxes.cls.tolist())
-        summary[Path(result.path).name] = dict(counts)
+        summary[name] = dict(counts)
         total.update(counts)
         images += 1
+        (xany_dir / f"{Path(name).stem}.json").write_text(json.dumps(xanylabeling(result), indent=2))
 
-    (args.out / "summary.json").write_text(json.dumps({"total": dict(total.most_common()), "images": summary}, indent=2))
+    (args.out / "summary.json").write_text(
+        json.dumps({"total": dict(total.most_common()), "images": summary}, indent=2)
+    )
     detected = ", ".join(f"{name} {n}" for name, n in total.most_common()) or "nothing detected"
     print(f">>> {images} images from {args.source} -> {args.out} ({detected})")
 
