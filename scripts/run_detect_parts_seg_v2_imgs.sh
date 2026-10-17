@@ -15,8 +15,7 @@ conda activate yolo
 # numbered-first ordering places last).
 python "$REPO_DIR/tools/detect_yolo_imgs.py" \
     --model /data/4T-1/hewu/alg-product/ultralytics/runs/segment/ultralytics/yolo26/yolo-seg-finetune-3/weights/best.pt \
-    --source /data/4T-1/hewu/dataset/hewu2008/parts-seg-v2-20261017/images \
-    --out /data/4T-1/hewu/dataset/hewu2008/parts-seg-v2-20261017/imgs \
-    --start-index 245 \
+    --source /data/4T-1/hewu/dataset/hewu2008/parts-seg-v3-20260117/images \
+    --out /data/4T-1/hewu/dataset/hewu2008/parts-seg-v3-20260117/image-auto-annotated \
     --conf 0.25 \
     --device 0
