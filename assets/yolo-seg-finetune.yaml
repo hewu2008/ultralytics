@@ -92,9 +92,11 @@ warmup_bias_lr: 0.1
 # Full mosaic is back for the 218-image train set: 0.1 was the checkpoint's value on a much larger
 # corpus, and four-way composition is the main source of new context here.
 mosaic: 1.0
-# Also disables copy_paste, mixup and cutmix for the final N epochs, so keep the share bounded.
-# 2 is the checkpoint's value; now that mosaic is 1.0 a longer no-augmentation tail is worth trying.
-close_mosaic: 5
+# 0: the no-augmentation tail is off. Measured on parts-seg-v4, mask mAP50-95 stepped down at the
+# first mosaic-free epoch in both prior runs (finetune-6 0.9483 -> 0.9382, finetune-7 0.9386 ->
+# 0.9305) and never recovered, while box mAP50-95 was unchanged. With two supervised classes on one
+# capture, mosaic is the main source of context, so there is no tail to pay for.
+close_mosaic: 0
 hsv_h: 0.015
 hsv_s: 0.7
 hsv_v: 0.4
@@ -104,11 +106,11 @@ degrees: 40.0
 translate: 0.15
 scale: 0.3
 fliplr: 0.5
-# Re-enabled at the checkpoint's own value. MixUp blends two images and concatenates both instance
-# sets, so every mask stays tied to a real annotation, but a blended mask no longer describes what is
-# visible under it. That hits the already-weaker mask metric first - watch mask mAP50-95, not box.
-# close_mosaic zeroes mixup for the final 5 epochs, so it only runs in epochs 1-25.
-mixup: 0.05
+# 0.0: off, not just bounded. MixUp blends two images and concatenates both instance sets, so every
+# mask stays tied to a real annotation, but a blended mask no longer describes what is visible under
+# it - that hits the already-weaker mask metric first. It was tolerable at 0.05 only because
+# close_mosaic zeroed it after epoch 25; with close_mosaic 0 it would run the whole schedule.
+mixup: 0.0
 copy_paste: 0.3
 
 # Prediction / export
