@@ -13,8 +13,8 @@ REPO_DIR="$(dirname "$SCRIPT_DIR")"
 cd "$REPO_DIR"
 python "$REPO_DIR/tools/finetune_yolo_seg.py" \
     --model "$REPO_DIR/runs/pretrained/weights/best.pt" \
-    --source /data/4T-1/hewu/dataset/hewu2008/parts-seg-v4-20261020/images \
-    --data /data/4T-1/hewu/dataset/hewu2008/parts-seg-v4-20261020/finetune \
+    --source /data/4T-1/hewu/dataset/hewu2008/parts-seg-v5-20261020/images \
+    --data /data/4T-1/hewu/dataset/hewu2008/parts-seg-v5-20261020/finetune \
     --cfg "$REPO_DIR/assets/yolo-seg-finetune.yaml" \
     --val-ratio 0.1 \
     --device 0
