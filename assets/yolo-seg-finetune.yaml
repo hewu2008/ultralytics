@@ -9,8 +9,8 @@
 # target classes at conf 0.8 - not a re-learn.
 #
 # The structural knobs (optimizer AdamW, batch 18, imgsz, momentum, weight_decay, deterministic, loss
-# weights, mask_ratio, mixup 0.05, degrees 40) are taken from that checkpoint's train_args so this run
-# stays comparable with the model it starts from. nbs 18 and amp bf16 replace the checkpoint's
+# weights, degrees 40) are taken from that checkpoint's train_args so this run stays comparable with the
+# model it starts from. nbs 18 and amp bf16 replace the checkpoint's
 # nbs 64 / fp32, and the schedule deviates too: replaying the checkpoint's lr0 5e-05 / linear decay /
 # mosaic 0.1 on 218 new images moves the model too little to be a fine-tune.
 # Only the data-loading knobs (cache, workers) and the unused predict/export block are untouched:
@@ -55,7 +55,10 @@ pretrained: true
 save: true
 verbose: true
 multi_scale: 0.0
-mask_ratio: 2
+# Mask prototype resolution, under test. yolo-seg-finetune-10 (mask_ratio 1) is the single-variable
+# counterpart of yolo-seg-finetune-9 (mask_ratio 2), both at epochs 40 on the same 694/78 split, and
+# the 78-image val decides it: lower ratios have historically cost time and memory with no gain here.
+mask_ratio: 1
 classes:
 conf:
 embed:
