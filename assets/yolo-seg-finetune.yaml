@@ -55,9 +55,13 @@ pretrained: true
 save: true
 verbose: true
 multi_scale: 0.0
-# Mask prototype resolution, under test. yolo-seg-finetune-10 (mask_ratio 1) is the single-variable
-# counterpart of yolo-seg-finetune-9 (mask_ratio 2), both at epochs 40 on the same 694/78 split, and
-# the 78-image val decides it: lower ratios have historically cost time and memory with no gain here.
+# Mask prototype resolution. Validated on the 78-image val of parts-seg-v4: evaluated with the
+# checkpoint's own mask_ratio, yolo-seg-finetune-12 (mask_ratio 1, epochs 40) reaches mask mAP50-95
+# 0.9606 (NMS) / 0.9640 (NMS-free) against finetune-9's 0.9438 / 0.9467 at mask_ratio 2, and both
+# classes improve (elbow_pipe 0.968 vs 0.950, interior_door_handle 0.960 vs 0.943). Cost is ~2x train
+# time (26.5 s/epoch vs 14 s/epoch), plus more mask work at inference.
+# When validating a checkpoint, pass its own mask_ratio: evaluating a mask_ratio 2 checkpoint at the
+# default 4 moved mask mAP50-95 by up to 0.014 - more than the gap between runs.
 mask_ratio: 1
 classes:
 conf:
