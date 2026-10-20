@@ -5,16 +5,16 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(dirname "$SCRIPT_DIR")"
 
 # Fine-tune the runs/pretrained/weights/best.pt checkpoint (output_parts_20260723_mixed_14) on the
-# merged parts-seg-v4 set (772 triples: v3's 740 plus the 32 images captured 2026-10-20).
-# tools/finetune_yolo_seg.py rebuilds the train/val symlink split + data.yaml on every run, then
-# trains with the assets cfg. Val is every 1/--val-ratio-th file of the numbered order, so a re-run
-# over a grown set keeps the images that were already val in val and stays comparable with earlier
-# runs. Add --prepare-only (or run `yolo train ...` yourself) to build the split without training.
+# merged parts-seg-v5 set. v5 is already a YOLO-format dataset, so no split is built here: its
+# finetune/{images,labels}/{train,val} hold real files (7018 train / 754 val - v5's own 6324/676 plus
+# 694/78 merged in from parts-seg-v4 by tools/merge_parts_seg_finetune.py), and yolo train reads v5's
+# data.yaml directly, leaving both memberships untouched. These images carry no json annotations, so
+# there is no flat numbered triple folder to point at and tools/finetune_yolo_seg.py does not apply.
+# The hyperparameters come from assets/yolo-seg-finetune.yaml through cfg=, whose project/name/
+# exist_ok place the run under runs/segment/ultralytics/yolo26/yolo-seg-finetune-<n>.
 cd "$REPO_DIR"
-python "$REPO_DIR/tools/finetune_yolo_seg.py" \
-    --model "$REPO_DIR/runs/pretrained/weights/best.pt" \
-    --source /data/4T-1/hewu/dataset/hewu2008/parts-seg-v5-20261020/images \
-    --data /data/4T-1/hewu/dataset/hewu2008/parts-seg-v5-20261020/finetune \
-    --cfg "$REPO_DIR/assets/yolo-seg-finetune.yaml" \
-    --val-ratio 0.1 \
-    --device 0
+yolo train \
+    model="$REPO_DIR/runs/pretrained/weights/best.pt" \
+    data=/data/4T-1/hewu/dataset/hewu2008/parts-seg-v5-20261020/finetune/data.yaml \
+    cfg="$REPO_DIR/assets/yolo-seg-finetune.yaml" \
+    device=0
